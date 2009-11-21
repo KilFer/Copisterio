@@ -8,30 +8,7 @@ __logfile__="/var/log/copisteriod.log"
 __altlogfile__="/tmp/copisteriod.log"
 __config_file__="foo"
 
-class CopisterioDaemon():
 
-
-    def __init__(self, cfile):
-        self._conf = ConfigParser(); self._conf.read(cfile)
-        self.loop = LoopingCall(self.work).start(self._c('frecuency'))
-        try: self.log=open('a', __logfile__)
-        except: self.log=open('a', __altlogfile__)
-    
-    def _c(self, name): return self._conf.get('main',name)
-
-    def work(self):
-        diskmanager = CopisterioDisk(self.conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
-
-        if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
-            diskmanager._delete_files( self._get_old_files(self._c('main'), self._c('library')))
-
-        for file in self._list_files():
-            rename(self._c('tmpdir') + os.sep + file[0],
-                    self._c('admdir') + os.sep + file[1] + os.sep + file[2])
-            chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
-            chmod(744, self._c('admdir') + os.sep + files[0])
-
-CopisterioDaemon(__config_file__)
 
 class CopisterioDisk():
     # Internal functions.
@@ -86,3 +63,25 @@ class CopisterioDisk():
         return oldies
 
 
+class CopisterioDaemon():
+    def __init__(self, cfile):
+        self._conf = ConfigParser(); self._conf.read(cfile)
+        self.loop = LoopingCall(self.work).start(self._c('frecuency'))
+        try: self.log=open('a', __logfile__)
+        except: self.log=open('a', __altlogfile__)
+
+    def _c(self, name): return self._conf.get('main',name)
+
+    def work(self):
+        diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
+
+        if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
+            diskmanager._delete_files( self._get_old_files(self._c('main'), self._c('library')))
+
+        for file in self._list_files():
+            rename(self._c('tmpdir') + os.sep + file[0],
+                    self._c('admdir') + os.sep + file[1] + os.sep + file[2])
+            chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
+            chmod(744, self._c('admdir') + os.sep + files[0])
+
+CopisterioDaemon(__config_file__)
