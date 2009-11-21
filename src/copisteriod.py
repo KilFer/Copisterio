@@ -9,6 +9,8 @@ __logfile__="/var/log/copisteriod.log"
 __altlogfile__="/tmp/copisteriod.log"
 __config_file__="foo"
 
+# TODO ADD KARMA
+
 class CopisterioDisk():
     # Internal functions.
 
@@ -23,7 +25,7 @@ class CopisterioDisk():
         try:
             self.log
             self.log.write(status, '> ', log)
-        except: 
+        except:
             print status, '> ', log
 
     def _get_disk_data(self, dir):
@@ -32,15 +34,13 @@ class CopisterioDisk():
         return disk
 
     def _disk_status(self, dir):
-        disk_stat = self._get_disk_data(dir) 
+        disk_stat = self._get_disk_data(dir)
         self._log('INFO', disk_stat[statvfs.F_BAVAIL])
         self._log('INFO', disk_stat[statvfs.F_BFREE])
-	return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
+        return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
 
-    def _to_free(self, dir, freespace, min_free_space):
-        # TODO get freespace in bytes, not percentage.
-        # return min_free_space - freespace_real
-        return
+    def _to_free(self, dir, disk_status, min_free_space):
+        return min_free_space - disk_status[statvfs.B_FREE]*4096 # Or something like this xDD TODO
 
     def _delete_files(self, files):
         for file in files: os.unlink(file)
@@ -48,9 +48,10 @@ class CopisterioDisk():
     def _list_files(self,dir):
         res=[]
         for root,dirs,files in os.walk(dir):
-           [ rsdes.append(root + file,
+           [ res.append(root + file,
              mimetypes.get_type( root + file)[0], file.__getitem__(0),
              _status(file).st_ctime, _status(file).st_size) for file in files]
+        res.sort( lambda a,b: cmp(a[3],b[3]) )
         return res
 
     def _status(self, o): return os.stat_results(os.stat(o))
@@ -59,12 +60,11 @@ class CopisterioDisk():
         freed = 0
         oldies=[]
 
-        to_free = self._to_free( dir, self._disk_status(self._c('main')), 
+        to_free = self._to_free( dir, self._disk_status(self._c('main')),
                 self._c('minspace'))
+
         while(to_free < freed):
             files=self._list_files(self._c('main'))
-            #TODO files has the data, just put in oldies the lastest ones.
-            # Basically ordering an array of arrays for the third arg of each one.
             for file in oldies: freed += ofile[2]
         return oldies
 
@@ -80,7 +80,7 @@ class CopisterioDaemon():
 
     def work(self):
         diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
-        diskmanager._log('INFO', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')   
+        diskmanager._log('INFO', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
             diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
@@ -90,4 +90,5 @@ class CopisterioDaemon():
             chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
             chmod(744, self._c('admdir') + os.sep + files[0])
         #Check file does not exist
+
 CopisterioDaemon(__config_file__)
