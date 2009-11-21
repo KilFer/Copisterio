@@ -13,7 +13,7 @@ __config_file__="foo"
 class CopisterioDisk():
     # Internal functions.
 
-    def __init__(conf):
+    def __init__(self,conf):
         self.conf = conf
 
     def _c(self, name): return self._conf.get('main',name)
