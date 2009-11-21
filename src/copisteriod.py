@@ -10,15 +10,20 @@ __config_file__="foo"
 
 class CopisterioDaemon():
 
+
     def __init__(self, cfile):
         self._conf = ConfigParser(); self._conf.read(cfile)
         self.loop = LoopingCall(self.work).start(self._c('frecuency'))
         try: self.log=open('a', __logfile__)
         except: self.log=open('a', __altlogfile__)
+    
+    def _c(self, name): return self._conf.get('main',name)
 
-     def work(self):
-        if self._disk_status(self._c('main')) < self._c('delete_status'):
-            self._delete_files( self._get_old_files(self._c('main'), self._c('library')))
+    def work(self):
+        diskmanager = CopisterioDisk(self.conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
+
+        if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
+            diskmanager._delete_files( self._get_old_files(self._c('main'), self._c('library')))
 
         for file in self._list_files():
             rename(self._c('tmpdir') + os.sep + file[0],
@@ -30,6 +35,10 @@ CopisterioDaemon(__config_file__)
 
 class CopisterioDisk():
     # Internal functions.
+
+    def __init__(conf):
+        self.conf = conf
+
     def _c(self, name): return self._conf.get('main',name)
 
     def _log(self,status,log):
