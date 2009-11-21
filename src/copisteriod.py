@@ -53,10 +53,13 @@ class CopisterioDisk():
     def _status(self, o): return os.stat_results(os.stat(o))
 
     def _get_old_files(self,maindir,dir):
+        freed = 0
+        oldies=[]
+
         to_free = self._to_free( dir, self._disk_status(self._c('main')), 
                 self._c('minspace'))
         while(to_free < freed):
-            files=_list_files(self._c('main'))
+            files=self._list_files(self._c('main'))
             #TODO files has the data, just put in oldies the lastest ones.
             # Basically ordering an array of arrays for the third arg of each one.
             for file in oldies: freed += ofile[2]
