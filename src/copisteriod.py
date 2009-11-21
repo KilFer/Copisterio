@@ -2,37 +2,40 @@ import os
 import mimetypes
 from ConfigParser import ConfigParser
 from twisted.internet.task import LoopingCall
+import statvfs
 
 # Global configuration
 __logfile__="/var/log/copisteriod.log"
 __altlogfile__="/tmp/copisteriod.log"
 __config_file__="foo"
 
-
-
 class CopisterioDisk():
     # Internal functions.
 
     def __init__(self,conf):
         self._conf = conf
+        try: self.log=open(__logfile__, 'a')
+        except: self.log=open(__altlogfile__, 'a')
 
     def _c(self, name): return self._conf.get('main',name)
 
     def _log(self,status,log):
-        if self.log: self.log.write(status, '> ', log)
-        else: print status, '> ', log
+        try:
+            self.log
+            self.log.write(status, '> ', log)
+        except: 
+            print status, '> ', log
 
-    def _get_disk(dir):
-        # TODO Return disk where dir is.
-        return
-
-    def _disk_space(dir):
-        # TODO return disk full space of _get_disk(dir)
-        return
+    def _get_disk_data(self, dir):
+        disk = os.statvfs(dir)
+        self._log('INFO', disk )
+        return disk
 
     def _disk_status(self, dir):
-        # TODO Return numeric percentage of free space of _get_disk.
-        return
+        disk_stat = self._get_disk_data(dir) 
+        self._log('INFO', disk_stat[statvfs.F_BAVAIL])
+        self._log('INFO', disk_stat[statvfs.F_BFREE])
+	return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
 
     def _to_free(self, dir, freespace, min_free_space):
         # TODO get freespace in bytes, not percentage.
@@ -77,7 +80,7 @@ class CopisterioDaemon():
 
     def work(self):
         diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
-
+        diskmanager._log('INFO', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')   
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
             diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
@@ -86,5 +89,5 @@ class CopisterioDaemon():
                     self._c('admdir') + os.sep + file[1] + os.sep + file[2])
             chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
             chmod(744, self._c('admdir') + os.sep + files[0])
-
+        #Check file does not exist
 CopisterioDaemon(__config_file__)
