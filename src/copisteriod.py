@@ -14,7 +14,7 @@ class CopisterioDisk():
     # Internal functions.
 
     def __init__(self,conf):
-        self.conf = conf
+        self._conf = conf
 
     def _c(self, name): return self._conf.get('main',name)
 
@@ -76,7 +76,7 @@ class CopisterioDaemon():
         diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
 
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
-            diskmanager._delete_files( self._get_old_files(self._c('main'), self._c('library')))
+            diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
         for file in self._list_files():
             rename(self._c('tmpdir') + os.sep + file[0],
