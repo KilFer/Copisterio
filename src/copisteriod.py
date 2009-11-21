@@ -70,8 +70,8 @@ class CopisterioDaemon():
     def __init__(self, cfile):
         self._conf = ConfigParser(); self._conf.read(cfile)
         self.loop = LoopingCall(self.work).start(self._c('frecuency'))
-        try: self.log=open('a', __logfile__)
-        except: self.log=open('a', __altlogfile__)
+        try: self.log=open(__logfile__, 'a')
+        except: self.log=open(__altlogfile__, 'a')
 
     def _c(self, name): return self._conf.get('main',name)
 
