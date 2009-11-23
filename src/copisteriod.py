@@ -2,6 +2,7 @@ import os
 import mimetypes
 from ConfigParser import ConfigParser
 from twisted.internet.task import LoopingCall
+from twisted.internet import reactor
 import statvfs
 
 # Global configuration
@@ -41,8 +42,8 @@ class CopisterioDisk():
         disk_stat = self._get_disk_data(dir)
         return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
 
-    def _to_free(self, dir, disk_status, min_free_space):
-        self._log('INFO', int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096) # Or something like this xDD TODO
+    def _to_free(self, dir, disk_status, min_free_space): # Ok this is not working... :D FIXME
+        self._log('INFO', int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096)
         return int(min_free_space) - disk_status[statvfs.F_BFREE]  * 4096 # Or something like this xDD TODO
 
     def _delete_files(self, files):
@@ -66,8 +67,8 @@ class CopisterioDisk():
 
         to_free = self._to_free( dir, self._get_disk_data(maindir),
                 self._c('minspace'))
-
-        while(to_free < freed): # FIXME This enters in an infinite loop
+        self._log('INFO', "Free space needed is:" + str(to_free))
+        while(to_free > freed): # FIXME This enters in an infinite loop
             files=self._list_files(self._c('main'))
             for file in oldies: freed += ofile[2]
         self._log('INFO', oldies)
@@ -77,7 +78,9 @@ class CopisterioDisk():
 class CopisterioDaemon():
     def __init__(self, cfile):
         self._conf = ConfigParser(); self._conf.read(cfile)
-        self.loop = LoopingCall(self.work).start(self._c('frecuency'))
+        self.loop = LoopingCall(self.work)
+        self.loop.start(int(self._c('frecuency')))
+        reactor.run()
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
 
@@ -91,7 +94,7 @@ class CopisterioDaemon():
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
             diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
-        for file in self._list_files():
+        for file in diskmanager._list_files(self._c('main')):
             rename(self._c('tmpdir') + os.sep + file[0],
                     self._c('admdir') + os.sep + file[1] + os.sep + file[2])
             chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
