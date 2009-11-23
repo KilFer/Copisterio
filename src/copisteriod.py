@@ -16,36 +16,40 @@ class CopisterioDisk():
 
     def __init__(self,conf):
         self._conf = conf
+        self.debug=self._c('')
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
+        self._log('INFO','Initialized CopisterioDisk class')
 
-    def _c(self, name): return self._conf.get('main',name)
+    def _c(self, name):
+        if self._conf.has_option('main',name): return self._conf.get('main',name)
+        else: return "Undefined"
 
     def _log(self,status,log):
-        try:
-            self.log
-            self.log.write(status, '> ', log)
-        except:
-            print status, '> ', log
+        if self.log:
+            if status is not "DEBUG": self.log.write(status + '> ' + str(log) + "\n")
+            else:
+                if self.debug is 1: self.log.write(status + '> ' + str(log) +  "\n")
+        else: print status, '> ', log
 
     def _get_disk_data(self, dir):
         disk = os.statvfs(dir)
-        self._log('INFO', disk )
+        self._log('DEBUG', "Disk data array is:" + str(disk))
         return disk
 
     def _disk_status(self, dir):
         disk_stat = self._get_disk_data(dir)
-        self._log('INFO', disk_stat[statvfs.F_BAVAIL])
-        self._log('INFO', disk_stat[statvfs.F_BFREE])
         return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
 
     def _to_free(self, dir, disk_status, min_free_space):
-        return min_free_space - disk_status[statvfs.B_FREE]*4096 # Or something like this xDD TODO
+        self._log('INFO', int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096) # Or something like this xDD TODO
+        return int(min_free_space) - disk_status[statvfs.F_BFREE]  * 4096 # Or something like this xDD TODO
 
     def _delete_files(self, files):
         for file in files: os.unlink(file)
 
     def _list_files(self,dir):
+        self._log('INFO', "Listing files in %s" %dir)
         res=[]
         for root,dirs,files in os.walk(dir):
            [ res.append(root + file,
@@ -56,16 +60,17 @@ class CopisterioDisk():
 
     def _status(self, o): return os.stat_results(os.stat(o))
 
-    def _get_old_files(self,maindir,dir):
+    def _get_old_files(self, maindir, dir):
         freed = 0
         oldies=[]
 
-        to_free = self._to_free( dir, self._disk_status(self._c('main')),
+        to_free = self._to_free( dir, self._get_disk_data(maindir),
                 self._c('minspace'))
 
-        while(to_free < freed):
+        while(to_free < freed): # FIXME This enters in an infinite loop
             files=self._list_files(self._c('main'))
             for file in oldies: freed += ofile[2]
+        self._log('INFO', oldies)
         return oldies
 
 
@@ -76,7 +81,9 @@ class CopisterioDaemon():
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
 
-    def _c(self, name): return self._conf.get('main',name)
+    def _c(self, name): 
+        if self._conf.has_option('main',name): return self._conf.get('main',name)
+        else: return "Undefined"
 
     def work(self):
         diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
