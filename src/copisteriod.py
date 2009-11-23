@@ -10,8 +10,6 @@ __logfile__="/var/log/copisteriod.log"
 __altlogfile__="/tmp/copisteriod.log"
 __config_file__="foo"
 
-# TODO ADD KARMA
-
 class CopisterioDisk():
     # Internal functions.
 
@@ -68,7 +66,7 @@ class CopisterioDisk():
         to_free = self._to_free( dir, self._get_disk_data(maindir),
                 self._c('minspace'))
         self._log('INFO', "Free space needed is:" + str(to_free))
-        while(to_free > freed): # FIXME This enters in an infinite loop
+        while(to_free > freed):
             files=self._list_files(self._c('main'))
             for file in oldies: freed += ofile[2]
         self._log('INFO', oldies)
@@ -84,21 +82,23 @@ class CopisterioDaemon():
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
 
-    def _c(self, name): 
+    def _c(self, name):
         if self._conf.has_option('main',name): return self._conf.get('main',name)
         else: return "Undefined"
 
     def work(self):
-        diskmanager = CopisterioDisk(self._conf) # Yeah, yeah, I know it would be better to just make the object access to the parent's _c function, but I'm lazy now, and don't remember how's done :D
+        diskmanager = CopisterioDisk(self._conf)
         diskmanager._log('INFO', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
             diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
         for file in diskmanager._list_files(self._c('main')):
-            rename(self._c('tmpdir') + os.sep + file[0],
-                    self._c('admdir') + os.sep + file[1] + os.sep + file[2])
-            chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
-            chmod(744, self._c('admdir') + os.sep + files[0])
-        #Check file does not exist
+            if (os.path.exists( self._c('admdir') + os.sep + file[1] + os.sep + file[2] )):
+                rename(self._c('tmpdir') + os.sep + file[0],
+                        self._c('admdir') + os.sep + file[1] + os.sep + file[2])
+                chown(getgid(), getuid(), self._c('admdir') + os.sep + files[0])
+                chmod(744, self._c('admdir') + os.sep + files[0])
+            else:
+                self.log('WARN', "File %s/%s exists" %(file[1],file[2]))
 
 CopisterioDaemon(__config_file__)
