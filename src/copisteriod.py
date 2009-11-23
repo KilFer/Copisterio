@@ -8,7 +8,8 @@ import statvfs
 # Global configuration
 __logfile__="/var/log/copisteriod.log"
 __altlogfile__="/tmp/copisteriod.log"
-__config_file__="foo"
+__config_file__="copisteriod.conf"
+__base_cfile__="/etc/copisteriod.conf" # THERE MUST EXIST THIS IF NOT $HOME/.copisteriod.conf
 
 class CopisterioDisk():
     # Internal functions.
@@ -18,7 +19,7 @@ class CopisterioDisk():
         self.debug=self._c('')
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
-        self._log('INFO','Initialized CopisterioDisk class')
+        self._log('DEBUG','Initialized CopisterioDisk class')
 
     def _c(self, name):
         if self._conf.has_option('main',name): return self._conf.get('main',name)
@@ -41,14 +42,13 @@ class CopisterioDisk():
         return (disk_stat[statvfs.F_BAVAIL]*100)/disk_stat[statvfs.F_BFREE]
 
     def _to_free(self, dir, disk_status, min_free_space): # Ok this is not working... :D FIXME
-        self._log('INFO', int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096)
         return int(min_free_space) - disk_status[statvfs.F_BFREE]  * 4096 # Or something like this xDD TODO
 
     def _delete_files(self, files):
         for file in files: os.unlink(file)
 
     def _list_files(self,dir):
-        self._log('INFO', "Listing files in %s" %dir)
+        self._log('DEBUG', "Listing files in %s" %dir)
         res=[]
         for root,dirs,files in os.walk(dir):
            [ res.append(root + file,
@@ -59,25 +59,24 @@ class CopisterioDisk():
 
     def _status(self, o): return os.stat_results(os.stat(o))
 
-    def _get_old_files(self, maindir, dir):
-        freed = 0
-        oldies=[]
-
+    def _get_old_files(self, maindir, dir, freed=0, oldies=[]):
         to_free = self._to_free( dir, self._get_disk_data(maindir),
                 self._c('minspace'))
-        self._log('INFO', "Free space needed is:" + str(to_free))
-        while(to_free > freed):
-            files=self._list_files(self._c('main'))
-            for file in oldies: freed += ofile[2]
-        self._log('INFO', oldies)
+
+        for file in self._list_files(self._c('main')):
+            break if freed < to_free
+            freed += file[2]
+            oldies.append(file)
+
+        if oldies: self._log('INFO', "Current old files to delete: " + oldies)
         return oldies
 
 
 class CopisterioDaemon():
     def __init__(self, cfile):
         self._conf = ConfigParser(); self._conf.read(cfile)
-        self.loop = LoopingCall(self.work)
-        self.loop.start(int(self._c('frecuency')))
+        if not self._conf.has_section('main'): print 'No conffile found'; exit()
+        self.loop = LoopingCall(self.work).start(int(self._c('frecuency')))
         reactor.run()
         try: self.log=open(__logfile__, 'a')
         except: self.log=open(__altlogfile__, 'a')
@@ -88,7 +87,7 @@ class CopisterioDaemon():
 
     def work(self):
         diskmanager = CopisterioDisk(self._conf)
-        diskmanager._log('INFO', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')
+        diskmanager._log('DEBUG', "Free percentage: " + str(diskmanager._disk_status(self._c('main'))) + '%')
         if diskmanager._disk_status(self._c('main')) < self._c('delete_status'):
             diskmanager._delete_files( diskmanager._get_old_files(self._c('main'), self._c('library')))
 
@@ -100,5 +99,10 @@ class CopisterioDaemon():
                 chmod(744, self._c('admdir') + os.sep + files[0])
             else:
                 self.log('WARN', "File %s/%s exists" %(file[1],file[2]))
+
+if not os.path.exists( os.environ['HOME'] + os.sep + "." + __config_file__ ):
+    __config_file__=__base_cfile__
+else:
+    __config_file__= os.environ['HOME'] + os.sep + "." + __config_file__
 
 CopisterioDaemon(__config_file__)
