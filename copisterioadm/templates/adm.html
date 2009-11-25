@@ -1,0 +1,39 @@
+<html>
+    <head>
+        <title> {{title}}  </title>
+        <link rel=stylesheet type="style/text" href="adm.css" />
+        <meta name="Author" content="David Francos Cuartero" />
+        <meta name="Organization" content="Downgrade hacklab" />
+        <meta name="Generator" content="Vim 7" />
+
+    </head>
+    <body>
+        <img class="header" src="images/header.png" alt="==Copisterio=="/>
+        <p class="pendingreq_ajax">Current pending requests: <span id="count">0</span></p>
+    
+        {% if pending_list.objects.all %}
+            <form type="Post" action="">
+                <div class="PendingList">
+                {% for item in pending_list.objects.all %}
+                    <div class="Item">
+                        <div class="ImgList">
+                            {% for img in item.thumbs %}
+                                <img class="thumb" src= {{ img }} />
+                            {% endfor %}
+                        </div>
+                        <div class="Description">
+                            <p class="item"> {{ item }} </p>
+                        </div>
+                        <div class="YesNo">
+                            <input type="radio" name="yesno" value="Yes">
+                            <input type="radio" name="yesno" value="No">
+                        </div>
+    
+            {% endfor %}
+                </div>
+            </form>
+        {% else %}
+            <p class="error">No pending requests.</p>
+        {% endif %}
+    </body>
+</html>

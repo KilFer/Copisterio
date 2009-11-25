@@ -6,7 +6,7 @@ import os
 import mimetypes
 from ConfigParser import ConfigParser
 from twisted.internet.task import LoopingCall
-from twisted.internet import reactor
+import twisted.internet.reactor as reactor
 import statvfs
 
 # Global configuration
@@ -14,6 +14,8 @@ __logfile__ = "/var/log/copisteriod.log"
 __altlogfile__ = "/tmp/copisteriod.log"
 __config_file__ = "copisteriod.conf"
 __base_cfile__ = "/etc/copisteriod.conf"
+
+# TODO Database stuff, read models in django app.
 
 class CopisterioInternal():
     """
@@ -92,6 +94,7 @@ class CopisterioDisk():
             We got the space neccesary to free to get the minum free space
             required (in bytes)
         """
+        self.i.log('DEBUG', 'Calculating free space')
         return int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096
         # Or something like this xDD TODO AND/OR FIXME
 
@@ -101,8 +104,10 @@ class CopisterioDisk():
         """
         for lfile in files:
             os.unlink(lfile)
+            self.i.log('DEBUG', 'Unlinking file: %s' %lfile)
 
     def list_files(self, ldir):
+        # FIXME woops, we should just get FILES not directories...
         """
             Return files in a ldirectory, in a list of lists with all the files info
         """
@@ -111,7 +116,8 @@ class CopisterioDisk():
         for root, ldirs, files in os.walk(ldir):
             [ res.append(root + lfile,
              mimetypes.guess_type( root + lfile)[0], lfile.__getitem__(0),
-             _status(lfile).s.ctime, _status(lfile).st_size) for lfile in files]
+             _status(lfile)['st_ctime'], _status(lfile)['st_size'])\
+             for lfile in files]
         res.sort( lambda a, b: cmp(a[3], b[3]) )
         return res
 
@@ -121,7 +127,7 @@ class CopisterioDisk():
         """
         return os.stat_result(os.stat(lfile))
 
-    def get_old_files(self, mainldir, ldir, freed=0, oldies=list()):
+    def get_old_files(self, mainldir, freed=0, oldies=list()):
         """
             Get oldest files until we free neccesary space
         """
@@ -129,7 +135,7 @@ class CopisterioDisk():
         to_free = self.to_free( self._get_disk_data(mainldir),
                 self.i.cfg('minspace'))
 
-        for lfile in self.list_files(self.i.cfg('main')):
+        for lfile in self.list_files(self.i.cfg('library')):
             if freed < to_free:
                 break
             freed += lfile[2]
@@ -168,7 +174,7 @@ class CopisterioDaemon():
         if diskmanager.disk_status(self.i.cfg('main'))\
                 < self.i.cfg('delete_status'):
             diskmanager.delete_files(diskmanager.get_old_files(
-                self.i.cfg('main'), self.i.cfg('library')))
+                self.i.cfg('main')))
 
         for lfile in diskmanager.list_files(self.i.cfg('main')):
 
