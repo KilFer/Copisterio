@@ -14,5 +14,6 @@ urlpatterns = patterns('',
 
     # Uncomment the next line to enable the admin:
     (r'^admin/(.*)', admin.site.root),
-    (r'^filter/$', 'copisterioadm.cfs.views.index'),
+    (r'^$', 'copisterioadm.cfs.views.index'),
+    (r'^accounts/login/$', 'django.contrib.auth.views.login')
 )
