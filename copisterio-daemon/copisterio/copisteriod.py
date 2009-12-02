@@ -15,17 +15,15 @@ __altlogfile__ = "/tmp/copisteriod.log"
 __config_file__ = "copisteriod.conf"
 __base_cfile__ = "/etc/copisteriod.conf"
 
-# TODO Database stuff, read models in django app.
-
 class CopisterioInternal():
     """
           Internal functions used by copisterio daemn
     """
 
     def __init__(self, cfile):
-
         self.conf = ConfigParser()
         self.conf.read(cfile)
+        self.db=self.init_db()
 
         if not self.conf.has_section('main'):
             print 'No conffile found'
@@ -62,6 +60,13 @@ class CopisterioInternal():
         if status is "DEBUG" and self.debug is 1 or status is not "DEBUG":
             self.log.write(status + '> ' + str(log) +  "\n")
 
+    def init_db(self):
+        conn = MySQLdb.connect (host = self.cfg("host"),
+                           user = self.cfg('user'),
+                           passwd = self.cfg('pass'),
+                           db = self.cfg('db'))
+        return conn.cursor()
+
 class CopisterioDisk():
     """
         Disk management
@@ -71,7 +76,7 @@ class CopisterioDisk():
             This is the class for disk usage management
         """
         self.i = internal
-
+        self.db=self.i.db
         self.i.log('DEBUG', 'Initialized CopisterioDisk class')
 
     def _get_disk_data(self, ldir):
@@ -95,8 +100,7 @@ class CopisterioDisk():
             required (in bytes)
         """
         self.i.log('DEBUG', 'Calculating free space')
-        return int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096
-        # Or something like this xDD TODO AND/OR FIXME
+        return int(min_free_space) - disk_status[statvfs.F_BFREE] * 4096 # TODO Check this
 
     def delete_files(self, files):
         """
@@ -106,15 +110,18 @@ class CopisterioDisk():
             os.unlink(lfile)
             self.i.log('DEBUG', 'Unlinking file: %s' %lfile)
 
+
     def list_files(self, ldir):
-        # FIXME woops, we should just get FILES not directories...
         """
             Return files in a ldirectory, in a list of lists with all the files info
         """
+        # FIXME woops, we should just get FILES not directories...
+        # lfile --> root, mimetype, filename
+
         self.i.log('DEBUG', "Listing files in %s" %ldir)
         res = list()
         for root, ldirs, files in os.walk(ldir):
-            [ res.append(root + lfile,
+            [ res.append(root , lfile,
              mimetypes.guess_type( root + lfile)[0], lfile.__getitem__(0),
              _status(lfile)['st_ctime'], _status(lfile)['st_size'])\
              for lfile in files]
@@ -146,17 +153,43 @@ class CopisterioDisk():
 
         return oldies
 
+    def move_file(self, file):
+        """
+            This moves the file from admdir to final dir in media organised
+            alphabetically and by type
+        """
+        # FIXME do this
+        fileo=_status(file)
+        os.rename(file, file[X])
+        return full_path
+
+    def check_processing(self, file, status):
+        """
+            This checks the file status, then moves it and adds it to db
+            or deletes it
+        """
+
+        if status is 1:
+            full_path=self.move_file(file)
+            self.delete_file_from_db(file,'Processing')
+            self.insert_file_in_db((file, full_path), "Approved" )
+
+        elif status is 0:
+            self.delete_file_from_db(file,'processing')
+            self.delete_files([file,])
 
 class CopisterioDaemon():
     """
        Main class for the daemon
     """
+
     def __init__(self, cfile):
         """
             This is copisterio Daemon class
         """
 
         self.i = CopisterioInternal(cfile)
+        self.db=self.i.db
         self.loop = LoopingCall(self.work).start(int(self.i.cfg('frecuency')))
 
         reactor.run()
@@ -177,18 +210,25 @@ class CopisterioDaemon():
                 self.i.cfg('main')))
 
         for lfile in diskmanager.list_files(self.i.cfg('main')):
+            filepath=self.i.cfg('admdir') + os.sep + lfile[1]
+            currentfilename=lfile[0] + os.sep + lfile[2]
+            newfilename=filepath + os.sep + lfile[1] + os.sep + lfile[2]
 
-            if (os.path.exists( self.i.cfg('admdir') + os.sep +
-                lfile[1] + os.sep + lfile[2] )):
-                os.rename(self.i.cfg('tmpdir') + os.sep + lfile[0],
-                       self.i.cfg('admdir') + os.sep + lfile[1] + \
-                       os.sep + lfile[2])
-                os.chown(os.getgid(), os.getuid(), self.i.cfg('admdir') +\
-                        os.sep + lfile[0])
-                os.chmod(744, self.i.cfg('admdir') + os.sep + lfile[0])
+            if (os.path.exists( newfilename):
+                os.rename( currentfilename, newfilename)
+                os.chown(os.getgid(), os.getuid(), newfilename)
+                os.chmod(744, newfilename)
+                thumbs=system('copisterio_mt %s %s' %(newfilename, filepath)
+                self.diskmanager.insert_file_in_db((newfilename, thumbs),
+                    "Processing")
 
             else:
                 self.i.log('WARN', "File %s/%s exists" %(lfile[1], lfile[2]))
+
+            self.db.execute("Select all from processing")
+            for file in self.db.select_all: # FIXME
+
+                diskmanager.check_processing(file)
 
 if not os.path.exists( os.environ['HOME'] + os.sep + "." + __config_file__ ):
     __config_file__ = __base_cfile__
