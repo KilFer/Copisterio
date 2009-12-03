@@ -1,0 +1,73 @@
+div.img{
+	height: auto;
+	width: auto;
+	float: none;
+	text-align: center;
+	border: 4px dashed;
+	border-color:#ffffff;
+	}
+
+.header{
+	border:4px dashed;
+	margin-left:auto;
+	margin-right:auto;
+	border-color: #ffffff;
+}
+
+div#Login {
+  margin: 0.5em 12px 0.5em 12px; padding: 0; text-align: center; width: auto;
+}
+
+.menu_up{
+    position: fixed;
+    top:0;
+    left:0;
+}
+
+.cell2{
+  text-align:left;
+  border: none; float: right;
+  margin: 0; padding: 2px; 
+  width: 49%;
+}
+
+div.center{
+  text-align:right;
+  border: none; float: right;
+  margin: 0; padding: 2px; 
+  width: 49%;
+}
+
+.cell{
+  text-align:right;
+  border: none; float: left; 
+  margin: 0; padding: 2px; 
+  width: 49%;
+}
+
+.tablerow{
+  margin-top: 0; margin-right: auto; margin-bottom: 0; margin-left: auto;
+  padding: 0; text-align: center; width: 100%;
+
+}
+
+.error{
+    border:4px dashed;
+	margin-left:auto;
+	margin-right:auto;
+    background-color:#a0a0a0;
+    color:#cf4000;
+    border-color:#ffffff;
+    padding:10px;
+    text-transform:capitalize;
+    font-weight:bolder
+}
+body {
+	background:#c0c0c0;
+	color:#000000;
+}
+
+p {
+	display:table;
+
+}

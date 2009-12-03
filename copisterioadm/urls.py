@@ -5,15 +5,10 @@ from django.contrib import admin
 admin.autodiscover()
 
 urlpatterns = patterns('',
-    # Example:
-    # (r'^copisterio/', include('copisterio.foo.urls')),
-
-    # Uncomment the admin/doc line below and add 'django.contrib.admindocs' 
-    # to INSTALLED_APPS to enable admin documentation:
-#    (r'^admin/doc/', include('django.contrib.admindocs.urls')),
-
-    # Uncomment the next line to enable the admin:
-    (r'^admin/(.*)', admin.site.root),
+    (r'^doit/', 'copisterioadm.cfs.views.doit'),
+    (r'^accounts/logout/', 'copisterioadm.cfs.views.logout'),
+    (r'^media/(?P<path>.*)$', 'django.views.static.serve',
+        {'document_root': 'media', 'show_indexes': True}),
     (r'^$', 'copisterioadm.cfs.views.index'),
     (r'^accounts/login/$', 'django.contrib.auth.views.login')
 )
