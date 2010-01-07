@@ -226,7 +226,7 @@ class CopisterioDaemon():
                 self.i.log('WARN', "File %s/%s exists" %(lfile[1], lfile[2]))
 
             self.db.execute("Select all from processing")
-            for file in self.db.select_all: # FIXME
+            for file in self.db.fetchall: # FIXME
 
                 diskmanager.check_processing(file)
 
